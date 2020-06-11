@@ -1,5 +1,5 @@
 --- mpd_status.py	2019-12-21 08:34:02.000000000 +0100
-+++ mpd_status.py	2020-06-11 19:23:28.647960536 +0200
++++ mpd_status.py	2020-06-11 19:28:40.541352740 +0200
 @@ -63,6 +63,21 @@
  from py3status.composite import Composite
  from mpd import MPDClient, CommandError, ConnectionError
@@ -140,7 +140,7 @@
 +                 if variable.position == 0:
 +                    text = u"{}...".format(text[ :self.max_width-3-longueur])
 +                    variable.position = variable.position + variable.step
-+                 elif variable.length +6 > variable.position +self.max_width:
++                 elif variable.length > variable.position +self.max_width:
 +                    text = "..."u"{}...".format(text[variable.position:self.max_width+variable.position-6-longueur:])
 +                    variable.position = variable.position + variable.step
 +                 else:
