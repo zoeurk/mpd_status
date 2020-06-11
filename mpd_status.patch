@@ -1,5 +1,5 @@
 --- mpd_status.py	2019-12-21 08:34:02.000000000 +0100
-+++ mpd_status.py	2020-06-11 18:19:11.538743824 +0200
++++ mpd_status.py	2020-06-11 19:23:28.647960536 +0200
 @@ -63,6 +63,21 @@
  from py3status.composite import Composite
  from mpd import MPDClient, CommandError, ConnectionError
@@ -72,7 +72,7 @@
      host = "localhost"
 -    max_width = 120
 +    #max_width = 120
-+    max_width = 40
++    max_width = 30
      password = None
      port = "6600"
      state_pause = "[pause]"
@@ -140,25 +140,25 @@
 +                 if variable.position == 0:
 +                    text = u"{}...".format(text[ :self.max_width-3-longueur])
 +                    variable.position = variable.position + variable.step
-+                 elif variable.length > variable.position +self.max_width:
-+                    text = "..."u"{}...".format(text[variable.position:self.max_width-6+variable.position-longueur:])
++                 elif variable.length +6 > variable.position +self.max_width:
++                    text = "..."u"{}...".format(text[variable.position:self.max_width+variable.position-6-longueur:])
 +                    variable.position = variable.position + variable.step
 +                 else:
 +                    text = "..."u"{}".format(text[variable.length+longueur+3-self.max_width:])
 +                    variable.left = 1
-+                    variable.position = self.max_width-variable.length
++                    variable.position = variable.length - self.max_width
 +               else:
 +                 if variable.position <= 0:
 +                    text = u"{}...".format(text[0:self.max_width-longueur-3])
 +                    variable.position = variable.step
 +                    variable.left = 0
-+                 elif variable.position - variable.step > 0:
++                 elif variable.position < variable.length:
 +                    text="..."u"{}...".format(text[variable.position:self.max_width-longueur+variable.position-6])
 +                    variable.position = variable.position - variable.step
 +                 else:
 +                    text = "..."u"{}".format(text[variable.length+longueur+3-self.max_width:])
 +                    variable.position = variable.position - variable.step
-+           print(str(variable.position + self.max_width)+"/"+str(variable.length)+"/"+str(self.max_width))
++           print(str(variable.position)+"/"+str(variable.length)+"/"+str(self.max_width))
 +           if variable.slidetime == 1:
 +              if variable.durationset == 1:
 +                   text = text + song["_time_"]
