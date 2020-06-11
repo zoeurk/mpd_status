@@ -1,0 +1,173 @@
+--- mpd_status.py	2019-12-21 08:34:02.000000000 +0100
++++ mpd_status.py	2020-06-11 16:04:13.350483931 +0200
+@@ -63,6 +63,21 @@
+ from py3status.composite import Composite
+ from mpd import MPDClient, CommandError, ConnectionError
+ 
++class variable:
++    left = 0
++    length = 0
++    position = 0
++    text = ""
++    step = 7
++    longtimeseparator = "/"
++    #pour avoir une longueur exacte
++    slidetime = 0
++    slide = 0
++    durationset = 0
++    elapsedset = 0
++    longtimeset = 0
++    curid = 0
++    nextid = 0
+ 
+ def song_attr(song, attr):
+     def parse_mtime(date_str):
+@@ -73,7 +88,9 @@
+             duration = int(song["time"])
+             if duration > 0:
+                 minutes, seconds = divmod(duration, 60)
+-                return "{:d}:{:02d}".format(minutes, seconds)
++                variable.durationset = 1
++                song["_time_"] = "{:d}:{:02d}".format(minutes, seconds)
++                return song["_time_"]
+             raise ValueError
+         except (KeyError, ValueError):
+             return ""
+@@ -86,7 +103,24 @@
+         return parse_mtime(song["last-modified"]).strftime("%c")
+     elif attr == "mdate":
+         return parse_mtime(song["last-modified"]).strftime("%x")
+-
++    elif attr == "elapsed":
++        variable.elapsedset = 1
++        return song["elapsed"]
++    elif attr == "album":
++        return song["album"]
++    elif attr == "track":
++        return song["track"]
++    elif attr == "longtime":
++        duration = int(song["time"])
++        minutes, seconds = divmod(duration,60)
++        song["_time_"] = "{:d}:{:02d}".format(minutes, seconds)
++        song["longtime"] = song["elapsed"] + variable.longtimeseparator + song["_time_"]
++        variable.longtimeset = 1
++        return song["longtime"]
++    elif attr == "slidetime":
++        variable.slidetime = 1
++    elif attr == "slide":
++        variable.slide = 1
+     return song.get(attr, "")
+ 
+ 
+@@ -96,12 +130,14 @@
+ 
+     # available configuration parameters
+     cache_timeout = 2
+-    format = "{state} [[[{artist}] - {title}]|[{file}]]"
++#    format = "{state} [[[{artist}] - {title}]|[{file}]]"
++    format = "{state} {artist} > {album}: {track} - {title} {longtime}{slidetime}"
+     hide_on_error = False
+     hide_when_paused = False
+     hide_when_stopped = True
+     host = "localhost"
+-    max_width = 120
++    #max_width = 120
++    max_width = 90
+     password = None
+     port = "6600"
+     state_pause = "[pause]"
+@@ -151,6 +187,21 @@
+             song = int(status.get("song", 0))
+             next_song = int(status.get("nextsong", 0))
+ 
++            s = self._get_mpd().currentsong()
++            variable.curid = status.get("songid",0)
++            if variable.curid == variable.nextid:
++               variable.position = 0
++               variable.left = 0
++            variable.nextid = status.get("nextsongid",0)
++
++            t = status.get("time")
++            p = re.compile("[0-9]*:")
++            result = p.search(t)
++            t = result.group(0)[:-1]
++            duration = int(t)
++            minutes, seconds = divmod(duration, 60)
++            time = "{:d}:{:02d}".format(minutes, seconds)
++
+             state = status.get("state")
+ 
+             if (state == "pause" and self.hide_when_paused) or (
+@@ -170,7 +221,14 @@
+                     next_song = {}
+ 
+                 song["state"] = next_song["state"] = self._state_character(state)
+-
++                song["elapsed"] = time
++                song["album"] = s["album"]
++                try:
++                   song["track"] = s["track"]
++                except KeyError:
++                   song["track"] = 0
++                next_song["elapsed"] = "0:00"
++                next_song["album"] = next_song["track"] = ""
+                 def attr_getter(attr):
+                     if attr.startswith("next_"):
+                         return song_attr(next_song, attr[5:])
+@@ -195,12 +253,52 @@
+             text = "Failed to authenticate to mpd!"
+             state = None
+             self._get_mpd(disconnect=True)
+-
+-        if len(text) > self.max_width:
+-            text = u"{}...".format(text[: self.max_width - 3])
++        variable.text = text
++        variable.length = len(text)
++        if variable.slidetime == 1 or variable.slide == 1:
++           if variable.slide == 1:
++              longueur = 0
++           else:
++              if variable.durationset == 1:
++                 longueur = len(song["_time_"])
++              elif variable.elapsedset == 1:
++                 longueur = len(song["elapsed"])
++              elif variable.longtimeset == 1:
++                 longueur = len(song["longtime"])
++              text = text[:-longueur]
++              variable.length = len(text)
++           if variable.length+longueur > self.max_width:
++               if variable.left == 0:
++                 if variable.position == 0:
++                    text = u"{}...".format(text[ :self.max_width-3-longueur])
++                    variable.position = variable.position + variable.step
++                 elif variable.position + self.max_width +variable.step< variable.length:
++                    text = "..."u"{}...".format(text[variable.position:self.max_width-6+variable.position-longueur:])
++                    variable.position = variable.position + variable.step
++                 else:
++                    text = "..."u"{}".format(text[variable.length+longueur+3-self.max_width:])
++                    variable.left = 1
++               else:
++                 if variable.position <= 0:
++                    text = text = u"{}...".format(text[0:self.max_width-longueur-3])
++                    variable.position = variable.step
++                    variable.left = 0
++                 else:
++                    text="..."u"{}...".format(text[variable.position:self.max_width-longueur+variable.position-6])
++                    variable.position = variable.position - variable.step
++           if variable.slidetime == 1:
++              if variable.durationset == 1:
++                   text = text + song["_time_"]
++              elif variable.elapsedset == 1:
++                   text = text + song["elapsed"]
++              elif variable.longtimeset == 1:
++                   text = text + song["longtime"]
++        else:
++           if len(text) > self.max_width:
++              text = u"{}...".format(text[: self.max_width - 3])
+ 
+         response = {
+-            "cached_until": self.py3.time_in(self.cache_timeout),
++            "cached_until": self.py3.time_in(0,offset=self.cache_timeout),
+             "full_text": text if state or not self.hide_on_error else "",
+         }
+ 
