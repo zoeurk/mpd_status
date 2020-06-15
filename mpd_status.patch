@@ -1,6 +1,6 @@
 --- mpd_status.py	2019-12-21 08:34:02.000000000 +0100
-+++ mpd_status.py	2020-06-13 20:23:50.309522879 +0200
-@@ -63,6 +63,21 @@
++++ mpd_status.py	2020-06-14 19:02:28.651637607 +0200
+@@ -63,6 +63,20 @@
  from py3status.composite import Composite
  from mpd import MPDClient, CommandError, ConnectionError
  
@@ -11,7 +11,6 @@
 +    text = ""
 +    step = 10
 +    longtimeseparator = "/"
-+    #pour avoir une longueur exacte
 +    slidetime = 0
 +    slide = 0
 +    durationset = 0
@@ -22,7 +21,7 @@
  
  def song_attr(song, attr):
      def parse_mtime(date_str):
-@@ -73,7 +88,9 @@
+@@ -73,7 +87,9 @@
              duration = int(song["time"])
              if duration > 0:
                  minutes, seconds = divmod(duration, 60)
@@ -33,7 +32,7 @@
              raise ValueError
          except (KeyError, ValueError):
              return ""
-@@ -86,7 +103,24 @@
+@@ -86,7 +102,24 @@
          return parse_mtime(song["last-modified"]).strftime("%c")
      elif attr == "mdate":
          return parse_mtime(song["last-modified"]).strftime("%x")
@@ -59,7 +58,7 @@
      return song.get(attr, "")
  
  
-@@ -96,12 +130,14 @@
+@@ -96,12 +129,14 @@
  
      # available configuration parameters
      cache_timeout = 2
@@ -72,11 +71,11 @@
      host = "localhost"
 -    max_width = 120
 +    #max_width = 120
-+    max_width = 40
++    max_width = 90
      password = None
      port = "6600"
      state_pause = "[pause]"
-@@ -151,6 +187,21 @@
+@@ -151,6 +186,21 @@
              song = int(status.get("song", 0))
              next_song = int(status.get("nextsong", 0))
  
@@ -98,7 +97,7 @@
              state = status.get("state")
  
              if (state == "pause" and self.hide_when_paused) or (
-@@ -170,7 +221,14 @@
+@@ -170,7 +220,14 @@
                      next_song = {}
  
                  song["state"] = next_song["state"] = self._state_character(state)
@@ -114,7 +113,7 @@
                  def attr_getter(attr):
                      if attr.startswith("next_"):
                          return song_attr(next_song, attr[5:])
-@@ -195,12 +253,57 @@
+@@ -195,12 +252,57 @@
              text = "Failed to authenticate to mpd!"
              state = None
              self._get_mpd(disconnect=True)
@@ -146,11 +145,11 @@
 +                 else:
 +                    text = "..."u"{}".format(text[variable.length+longueur+3-self.max_width:])
 +                    variable.left = 1
-+                    variable.position = variable.position + variable.step
++                    variable.position = variable.position - variable.step
 +               else:
 +                 if variable.position <= 0:
 +                    text = u"{}...".format(text[0:self.max_width-longueur-3])
-+                    variable.position = 0
++                    variable.position = variable.step
 +                    variable.left = 0
 +                 elif variable.position + self.max_width < variable.length:
 +                    text="..."u"{}...".format(text[variable.position:self.max_width-longueur+variable.position-6])
